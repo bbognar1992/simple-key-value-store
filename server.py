@@ -1,5 +1,22 @@
 import asyncio
 
+store = dict()
+
+
+async def get_key(key):
+    global store
+    return store.get(key)
+
+
+async def set_key(key, value):
+    global store
+    store.update({key: value})
+
+
+async def delete_key(key):
+    global store
+    del store[key]
+
 
 async def handle_client(reader, writer):
     while True:
@@ -7,9 +24,26 @@ async def handle_client(reader, writer):
         if not data:
             break
         message = data.decode().strip()
+
+        input_list: list = message.split(" ")
+        command = input_list.pop(0)
+        response: str = "Not OK!"
+        if command == 'GET':
+            response = await get_key(input_list.pop(0))
+        elif command == 'SET':
+            await set_key(input_list.pop(0), input_list.pop(0))
+            response = "OK"
+        elif command == 'DELETE':
+            await delete_key(input_list.pop(0))
+            response = "OK"
+        else:
+            print(f"Wrong command: {command}")
+
         print(f"Received message: {message}")
 
-        response = "OK"
+        global store
+        print(f"Store: {store}")
+
         writer.write(response.encode())
         await writer.drain()
 
