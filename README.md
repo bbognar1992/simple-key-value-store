@@ -16,3 +16,11 @@ The task is to build a TCP server that acts as a simple key-value store. The ser
 2. Clients should be able to get the value of a key, set the value of a key, and delete a key-value pair.
 3. Server should send appropriate error messages to the client if there is any issue
 4. The server should persist the key-value stored in memory (e.g., using a dictionary).
+## Usage
+Following would start a server in background.
+
+```$ python server.py & ```
+
+ Once server is started run client as follows:
+
+```$ python client.py ```
