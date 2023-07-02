@@ -1,13 +1,30 @@
-import socket  # Import socket module
+import asyncio
 
-s = socket.socket()  # Create a socket object
-host = socket.gethostname()  # Get local machine name
-port = 12345  # Reserve a port for your service.
-s.bind((host, port))  # Bind to the port
 
-s.listen(5)  # Now wait for client connection.
-while True:
-    c, addr = s.accept()  # Establish connection with client.
-    print('Got connection from', addr)
-    c.send(b'Thank you for connecting')
-    c.close()  # Close the connection
+async def handle_client(reader, writer):
+    while True:
+        data = await reader.read(1024)
+        if not data:
+            break
+        message = data.decode().strip()
+        print(f"Received message: {message}")
+
+        response = "OK"
+        writer.write(response.encode())
+        await writer.drain()
+
+    writer.close()
+
+
+async def main():
+    port = 12345
+    host = '127.0.0.1'
+    server = await asyncio.start_server(
+        handle_client, host, port
+    )
+    print(f'Serving on {port}')
+    async with server:
+        await server.serve_forever()
+
+
+asyncio.run(main())
