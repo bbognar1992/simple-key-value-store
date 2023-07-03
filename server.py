@@ -19,6 +19,7 @@ async def delete_key(key):
 
 
 async def handle_client(reader, writer):
+    global store
     while True:
         data = await reader.read(1024)
         if not data:
@@ -27,23 +28,30 @@ async def handle_client(reader, writer):
 
         input_list: list = message.split(" ")
         command = input_list.pop(0)
+        key = input_list.pop(0)
         response: str = "Not OK!"
         if command == 'GET':
-            response = await get_key(input_list.pop(0))
+            value = await get_key(key)
+            if value:
+                response = value
+            else:
+                response = f"Key not exists: {key}"
         elif command == 'SET':
-            await set_key(input_list.pop(0), input_list.pop(0))
+            await set_key(key, input_list.pop(0))
             response = "OK"
         elif command == 'DELETE':
-            await delete_key(input_list.pop(0))
-            response = "OK"
+            if key in store:
+                await delete_key(key)
+                response = "OK"
+            else:
+                response = f"Key not exists: {key}"
         else:
             print(f"Wrong command: {command}")
 
         print(f"Received message: {message}")
 
-        global store
         print(f"Store: {store}")
-
+        print(response)
         writer.write(response.encode())
         await writer.drain()
 

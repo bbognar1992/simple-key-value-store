@@ -1,16 +1,36 @@
-import socket  # Import socket module
+import socket
+import threading
 
-s = socket.socket()  # Create a socket object
-host = socket.gethostname()  # Get local machine name
-port = 12345  # Reserve a port for your service.
 
-s.connect((host, port))
-s.send(b'SET a AAA')
-print(s.recv(1024))
+def simulate_client(client_n, host, port):
+    # Connect to the server
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect((host, port))
 
-s.send(b'GET a')
-print(s.recv(1024))
+    # Send messages to the server
+    messages = ["SET a AAA", "GET a", "DELETE a"]
 
-s.send(b'DELETE a')
-print(s.recv(1024))
-s.close()  # Close the socket when done
+    for message in messages:
+        client_socket.sendall(message.encode())
+        print(f"Client {client_n} sent message: {message}")
+        # Receive and print the response from the server
+        response = client_socket.recv(1024).decode()
+        print(f"Client {client_n} received message: {response}")
+
+    # Close the connection
+    client_socket.close()
+
+
+def simulate_multiple_clients(host, port, num_clients):
+    for i in range(num_clients):
+        threading.Thread(target=simulate_client, args=(i + 1, host, port)).start()
+
+
+if __name__ == '__main__':
+    host = '127.0.0.1'  # Server host
+    port = 12345  # Server port
+
+    # Simulate multiple clients
+    num_clients = 5
+
+    simulate_multiple_clients(host, port, num_clients)
