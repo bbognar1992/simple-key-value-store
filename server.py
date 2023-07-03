@@ -49,6 +49,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 raise ValueError(f"Wrong command: {command}")
         except Exception as e:
             response = str(e)
+            logger.error(response)
 
         logger.info(f"Received message: {message}")
         logger.info(f"Store: {store}")
