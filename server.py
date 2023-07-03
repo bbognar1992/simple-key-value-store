@@ -4,27 +4,31 @@ from typing import List, Dict
 
 logger = logging.getLogger("simple-key-value-store")
 store: Dict[str, str] = {}
+store_lock = asyncio.Lock()
 
 
 async def get_key(key: str) -> str:
-    try:
-        return store[key]
-    except KeyError:
-        return f"Key not found: {key}"
+    async with store_lock:
+        try:
+            return store[key]
+        except KeyError:
+            return f"Key not found: {key}"
 
 
 async def set_key(key: str, value: str) -> str:
-    store[key] = value
+    async with store_lock:
+        store[key] = value
     return "OK"
 
 
 async def delete_key(key: str) -> str:
-    try:
-        del store[key]
-    except KeyError:
-        return f"Key not found: {key}"
-    else:
-        return "OK"
+    async with store_lock:
+        try:
+            del store[key]
+        except KeyError:
+            return f"Key not found: {key}"
+        else:
+            return "OK"
 
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
