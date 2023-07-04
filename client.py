@@ -1,6 +1,10 @@
+import json
 import random
 import socket
 import threading
+
+with open('client_key_values.json', 'r') as file:
+    client_data = json.load(file)
 
 
 def simulate_client(client_n, host, port):
@@ -8,25 +12,21 @@ def simulate_client(client_n, host, port):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((host, port))
 
+    data: dict = random.choice(client_data)
     # Send messages to the server
     messages = [
-        f"SET a {client_n}", "GET a", "DELETE a",
-        f"SET b {client_n}", "GET b", "DELETE b",
-        f"SET c {client_n}", "GET c", "DELETE c",
-        f"SET d {client_n}", "GET d", "DELETE d",
-        f"SET e {client_n}", "GET e", "DELETE e",
-        f"SET f {client_n}", "GET f", "DELETE f",
-
+        "SET {k} {v}".format(k=data["key"], v=data["value"]),
+        "GET {k}".format(k=data["key"]),
+        "DELETE {k}".format(k=data["key"]),
     ]
 
-    for _ in range(2):
-        message = random.choice(messages)
-        client_socket.sendall(message.encode())
-        # Receive and print the response from the server
-        response = client_socket.recv(1024).decode()
+    message = random.choice(messages)
+    client_socket.send(message.encode())
+    # Receive and print the response from the server
+    response = client_socket.recv(102400).decode()
 
-        print(f"Client {client_n} sent message: {message}")
-        print(f"Client {client_n} received message: {response}")
+    print(f"Client {client_n} sent message: {message}")
+    print(f"Client {client_n} received message: {response}")
 
     # Close the connection
     client_socket.close()
