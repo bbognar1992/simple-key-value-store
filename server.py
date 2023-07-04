@@ -36,7 +36,7 @@ async def read_data(reader: asyncio.StreamReader) -> str:
     while True:
         chunk = await reader.read(1024)
         data += chunk
-        if len(chunk) < 1024 or not chunk:
+        if not chunk:
             break
     return data.decode().strip()
 
@@ -61,11 +61,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             response = await delete_key(key)
 
         logger.info(f"Received message: {command} {key}")
+        logger.debug(f"Store: {store}")
 
-    except TimeoutError as e:
-        response = str(e)
-        logger.error(response)
-        print("TimeOut")
     except Exception as e:
         response = str(e)
         logger.error(response)
@@ -74,6 +71,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         writer.write(response.encode())
         # Ensure that the response data is sent to the client
         await writer.drain()
+        writer.write_eof()
         writer.close()
 
 

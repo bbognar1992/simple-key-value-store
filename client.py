@@ -22,6 +22,7 @@ def simulate_client(client_n, host, port):
 
     message = random.choice(messages)
     client_socket.send(message.encode())
+    client_socket.shutdown(1)
     # Receive and print the response from the server
     response = client_socket.recv(102400).decode()
 
