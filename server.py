@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Dict
+from typing import Dict
 
 logger = logging.getLogger("simple-key-value-store")
 store: Dict[str, str] = {}
@@ -31,50 +31,50 @@ async def delete_key(key: str) -> str:
             return "OK"
 
 
-async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+async def read_data(reader: asyncio.StreamReader) -> str:
+    data = b''
     while True:
-        # Read data from the client
-        data = await reader.read(1024)
-
-        # If no more data is received, break the loop and exit
-        if not data:
+        chunk = await reader.read(1024)
+        data += chunk
+        if len(chunk) < 1024 or not chunk:
             break
+    return data.decode().strip()
 
-        # Decode the received data and remove leading/trailing whitespaces
-        message = data.decode().strip()
 
-        # Split the message into a list of strings based on spaces
-        input_list: List[str] = message.split(" ")
+async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+    try:
+        command = (await reader.readuntil(b' ')).decode().strip()
+        if command not in {"GET", "SET", "DELETE"}:
+            raise ValueError(f"Invalid command: {command}")
 
-        # Extract the command and key from the input list
-        command = input_list.pop(0)
-        key = input_list.pop(0)
+        if command == "SET":
+            key = (await reader.readuntil(b' ')).decode().strip()
+        else:
+            key = (await reader.read(257)).decode().strip()
 
-        response: str
-        try:
-            if command == 'GET':
-                response = await get_key(key)
-            elif command == 'SET':
-                response = await set_key(key, input_list.pop(0))
-            elif command == 'DELETE':
-                response = await delete_key(key)
-            else:
-                raise ValueError(f"Invalid command: {command}")
-        except Exception as e:
-            response = str(e)
-            logger.error(response)
+        if command == "SET":
+            data = await read_data(reader)
+            response = await set_key(key, data)
+        elif command == 'GET':
+            response = await get_key(key)
+        elif command == 'DELETE':
+            response = await delete_key(key)
 
-        logger.info(f"Received message: {message}")
-        logger.info(f"Store: {store}")
-        logger.info(f"Response: {response}")
+        logger.info(f"Received message: {command} {key}")
 
+    except TimeoutError as e:
+        response = str(e)
+        logger.error(response)
+        print("TimeOut")
+    except Exception as e:
+        response = str(e)
+        logger.error(response)
+    finally:
         # Encode the response string and write it to the writer
         writer.write(response.encode())
-
         # Ensure that the response data is sent to the client
         await writer.drain()
-
-    writer.close()
+        writer.close()
 
 
 async def main() -> None:
