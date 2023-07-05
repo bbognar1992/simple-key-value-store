@@ -61,7 +61,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             response = await delete_key(key)
 
         logger.info(f"Received message: {command} {key}")
-        logger.debug(f"Store: {store}")
+        logger.info(f"Store: {store}")
 
     except Exception as e:
         response = str(e)
