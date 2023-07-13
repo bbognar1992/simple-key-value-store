@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, List
+from typing import Dict
 
 logger = logging.getLogger("simple-key-value-store")
 store: Dict[str, str] = {}
