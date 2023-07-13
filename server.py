@@ -65,6 +65,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 buffer = buffer[index + 1:]
 
                 response = await process_line(line)
+                response += "\n"
                 writer.write(response.encode())
 
                 logging.info(
@@ -75,6 +76,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
     except QuitCommand:
         logger.info("Client close connection!")
+        writer.write(b'OK')
     except ConnectionError:
         logger.error("Abrupt disconnections from client")
     except asyncio.TimeoutError:
@@ -85,6 +87,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
         writer.write(response.encode())
     finally:
         writer.close()
+        await writer.wait_closed()
 
 
 async def main() -> None:

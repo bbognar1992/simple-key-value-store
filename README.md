@@ -21,6 +21,8 @@ Following would start a server in background.
 
 ```$ python server.py & ```
 
- Once server is started run client as follows:
+ Once server is started run single client or multiple clients as follows:
 
 ```$ python client.py ```
+
+```$ python clients.py ```
