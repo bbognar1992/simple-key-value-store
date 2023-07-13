@@ -1,77 +1,89 @@
 import asyncio
 import logging
-from typing import Dict
+from typing import Dict, List
 
 logger = logging.getLogger("simple-key-value-store")
 store: Dict[str, str] = {}
-store_lock = asyncio.Lock()
 
 
-async def get_key(key: str) -> str:
-    async with store_lock:
-        try:
-            return store[key]
-        except KeyError:
-            return f"Key not found: {key}"
+class QuitCommand(Exception):
+    pass
 
 
-async def set_key(key: str, value: str) -> str:
-    async with store_lock:
-        store[key] = value
+async def process_get_command(line: str) -> str:
+    key = line.removeprefix("GET ").strip()
+    return store.get(key, f"Key not found: {key}")
+
+
+async def process_set_command(line: str) -> str:
+    tmp = line.removeprefix("SET ")
+    index_sep = tmp.index(" ")
+    key = tmp[:index_sep].strip()
+    value = tmp[index_sep:].strip()
+    store[key] = value
     return "OK"
 
 
-async def delete_key(key: str) -> str:
-    async with store_lock:
-        try:
-            del store[key]
-        except KeyError:
-            return f"Key not found: {key}"
-        else:
-            return "OK"
+async def process_delete_command(line: str) -> str:
+    key = line.removeprefix("DELETE ").strip()
+    try:
+        del store[key]
+    except KeyError:
+        return f"Key not found: {key}"
+    else:
+        return "OK"
 
 
-async def read_data(reader: asyncio.StreamReader) -> str:
-    data = b''
-    while True:
-        chunk = await reader.read(1024)
-        data += chunk
-        if not chunk:
-            break
-    return data.decode().strip()
+async def process_line(line: str) -> str:
+    if line.startswith("GET "):
+        response = await process_get_command(line)
+    elif line.startswith("SET "):
+        response = await process_set_command(line)
+    elif line.startswith("DELETE "):
+        response = await process_delete_command(line)
+    elif line.startswith("QUIT"):
+        raise QuitCommand()
+    else:
+        raise ValueError(f"Invalid command in line: {line}")
+    return response
 
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     try:
-        command = (await reader.readuntil(b' ')).decode().strip()
-        if command not in {"GET", "SET", "DELETE"}:
-            raise ValueError(f"Invalid command: {command}")
+        buffer = ""
+        while True:
+            chunk = await asyncio.wait_for(
+                reader.read(1024), timeout=60 * 5
+            )
+            if not chunk:
+                break
 
-        if command == "SET":
-            key = (await reader.readuntil(b' ')).decode().strip()
-        else:
-            key = (await reader.read(257)).decode().strip()
+            buffer += chunk.decode()
+            while "\n" in buffer:
+                index = buffer.index("\n")
+                line = buffer[:index]
+                buffer = buffer[index + 1:]
 
-        if command == "SET":
-            data = await read_data(reader)
-            response = await set_key(key, data)
-        elif command == 'GET':
-            response = await get_key(key)
-        elif command == 'DELETE':
-            response = await delete_key(key)
+                response = await process_line(line)
+                writer.write(response.encode())
 
-        logger.info(f"Received message: {command} {key}")
-        logger.info(f"Store: {store}")
+                logging.info(
+                    f"Input:\n{line}\n"
+                    f"Output:\n{response}\n"
+                    f"Store:\n{store}"
+                )
 
-    except Exception as e:
-        response = str(e)
+    except QuitCommand:
+        logger.info("Client close connection!")
+    except ConnectionError:
+        logger.error("Abrupt disconnections from client")
+    except asyncio.TimeoutError:
+        logger.error("Client is inactive!")
+    except Exception as err:
+        response = str(err)
         logger.error(response)
-    finally:
-        # Encode the response string and write it to the writer
         writer.write(response.encode())
-        # Ensure that the response data is sent to the client
-        await writer.drain()
-        writer.write_eof()
+    finally:
         writer.close()
 
 
@@ -88,4 +100,5 @@ async def main() -> None:
         await server.serve_forever()
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
