@@ -76,7 +76,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
     except QuitCommand:
         logger.info("Client close connection!")
-        writer.write(b'OK')
+        writer.write(b'OK\n')
     except ConnectionError:
         logger.error("Abrupt disconnections from client")
     except asyncio.TimeoutError:
