@@ -1,4 +1,5 @@
 import socket
+from time import sleep
 
 
 def send_message(client, message):
@@ -11,6 +12,7 @@ def send_message(client, message):
             if not chunk:
                 break
             response += chunk
+            sleep(0.5)
         except socket.timeout:
             break
     print(f"Send to server: {message}")
@@ -25,9 +27,7 @@ if __name__ == '__main__':
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect((host, port))
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(0.5)
-        s.connect((host, port))
+    with socket.create_connection((host, port), timeout=1) as s:
         send_message(s, "SET a b\n")
         send_message(s, "GET a\n")
         send_message(s, "DELETE a\n")
